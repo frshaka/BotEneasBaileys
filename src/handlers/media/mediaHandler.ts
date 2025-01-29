@@ -3,13 +3,14 @@ import { WASocket, downloadMediaMessage, proto } from '@whiskeysockets/baileys';
 import { logger } from '../../utils/logger';
 import { driveService } from '../../services/drive';
 import prisma from '../../config/database';
+import fs from 'fs';
+import path from 'path';
 
 export async function setupMediaHandler(sock: WASocket) {
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type === 'notify') {
             for (const message of messages) {
                 try {
-                    // Verifica se é uma imagem e não é uma mensagem enviada pelo bot
                     const isImage = message.message?.imageMessage;
                     const isFromMe = message.key.fromMe;
                     const chat = message.key.remoteJid;
@@ -26,10 +27,13 @@ export async function setupMediaHandler(sock: WASocket) {
 }
 
 async function handleImageMessage(sock: WASocket, message: proto.IWebMessageInfo, chat: string) {
+    const tempDir = path.join(process.cwd(), 'temp');
+    let tempFilePath: string | null = null;
+
     try {
         // Verifica se é chat privado
         if (chat.endsWith('@g.us')) {
-            return; // Ignora mensagens de grupo
+            return;
         }
 
         // Envia mensagem inicial
@@ -46,17 +50,26 @@ async function handleImageMessage(sock: WASocket, message: proto.IWebMessageInfo
             return;
         }
 
-        // Download da imagem
-        logger.info('Baixando imagem...');
-        const mediaData = await downloadMediaMessage(message, 'base64', {});
-
-        if (!mediaData) {
-            throw new Error('Falha ao baixar imagem');
+        // Cria diretório temporário se não existir
+        if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
         }
 
-        // Cria nome do arquivo
-        const timestamp = new Date().toISOString().replace(/[-:.]/g, '');
+        // Download da imagem
+        logger.info('Baixando imagem...');
+        const mediaBuffer = await downloadMediaMessage(message, 'buffer', {});
+        
+        if (!mediaBuffer) {
+            throw new Error('Falha ao baixar imagem - Buffer vazio');
+        }
+
+        // Salva temporariamente
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '');
         const fileName = `${player.nick}_${timestamp}.jpg`;
+        tempFilePath = path.join(tempDir, fileName);
+        
+        fs.writeFileSync(tempFilePath, mediaBuffer as Buffer);
+        logger.info(`Arquivo temporário criado: ${tempFilePath}`);
 
         // Encontra ou cria pasta do jogador
         const folderName = `${player.nick}_${player.id}`;
@@ -65,34 +78,58 @@ async function handleImageMessage(sock: WASocket, message: proto.IWebMessageInfo
 
         // Upload da imagem
         logger.info('Iniciando upload da imagem...');
-        await driveService.uploadFile(mediaData as string, fileName, folderId);
+        const base64Data = (mediaBuffer as Buffer).toString('base64');
+        await driveService.uploadFile(base64Data, fileName, folderId);
 
         // Confirma o salvamento
         await sock.sendMessage(chat, {
-            text: '✅ Imagem salva com sucesso no Google Drive!'
+            text: '✅ Imagem salva com sucesso!'
         });
 
     } catch (error) {
-        logger.error('Erro ao processar imagem:', error);
+        logger.error('Erro detalhado ao processar imagem:', error);
+        let errorMessage = '❌ Erro ao salvar imagem. ';
+        
+        if (error instanceof Error) {
+            errorMessage += error.message;
+            logger.error('Stack:', error.stack);
+        }
+
         await sock.sendMessage(chat, {
-            text: '❌ Desculpe, ocorreu um erro ao salvar sua imagem. Tente novamente mais tarde.'
+            text: errorMessage
         });
+    } finally {
+        // Limpa arquivos temporários
+        if (tempFilePath && fs.existsSync(tempFilePath)) {
+            try {
+                fs.unlinkSync(tempFilePath);
+                logger.info('Arquivo temporário removido');
+            } catch (error) {
+                logger.error('Erro ao remover arquivo temporário:', error);
+            }
+        }
     }
 }
 
 async function findPlayerByPhone(phone: string): Promise<any> {
     try {
-        // Pega os últimos 8 dígitos do telefone para comparação
         const lastEightDigits = phone.slice(-8);
+        logger.info(`Buscando jogador pelo telefone: *****${lastEightDigits}`);
         
         const player = await prisma.player.findFirst({
             where: {
                 phone: {
                     endsWith: lastEightDigits
                 },
-                isActive: true // Apenas jogadores ativos
+                isActive: true
             }
         });
+
+        if (player) {
+            logger.info(`Jogador encontrado: ${player.nick}`);
+        } else {
+            logger.info('Jogador não encontrado');
+        }
 
         return player;
     } catch (error) {

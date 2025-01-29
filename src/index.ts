@@ -4,9 +4,13 @@ import { logger } from './utils/logger';
 import { whatsapp } from './config/whatsapp';
 import { setupMessageHandler } from './handlers/messages';
 import { setupMediaHandler } from './handlers/media/mediaHandler';
+import { setupGvGCommands } from './handlers/gvg/gvgCommands';
 
 // Carrega as variáveis de ambiente
 config();
+
+// ID do grupo de GvG
+const GVG_GROUP_ID = '120363198603699526@g.us'; // Substitua pelo ID do seu grupo
 
 async function startBot() {
     try {
@@ -18,6 +22,9 @@ async function startBot() {
         // Configura os handlers
         setupMessageHandler(sock);
         setupMediaHandler(sock);
+        
+        // Configura comandos de GvG
+        setupGvGCommands(sock, GVG_GROUP_ID);
         
         // Mantém o processo rodando
         process.stdin.resume();
