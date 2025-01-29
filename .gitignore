@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build
+dist/
+
+# Environment
+.env
+credentials.json
+
+# Logs
+*.log
+logs/
+
+# Runtime data
+auth_info_baileys/
+uploads/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

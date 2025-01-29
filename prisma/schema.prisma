@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo para Players
+model Player {
+  id            Int                @id
+  nick          String            @db.VarChar(50)
+  name          String            @db.VarChar(100)
+  phone         String            @unique @db.VarChar(15)
+  isActive      Boolean           @default(true)
+  isAdmin       Boolean           @default(false)
+  gvg           GvG[]
+  relicsTeams   RelicsPlayerTeam[]
+  relicsDamage  RelicsDamage[]    // Adicionado campo oposto
+
+  @@map("erp_players")
+}
+
+// Modelo para GvG
+model GvG {
+  id        String   @id @default(uuid())
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId  Int
+  isGvg     Boolean  @default(false)
+  fixed     Boolean  @default(false)
+  rotation  Boolean  @default(false)
+
+  @@map("erp_gvg")
+}
+
+// Modelo para Times de Relics
+model RelicsTeam {
+  id        String             @id @default(uuid())
+  team      String
+  players   RelicsPlayerTeam[]
+
+  @@map("erp_relics_team")
+}
+
+// Relacionamento entre Players e Times de Relics
+model RelicsPlayerTeam {
+  id            String          @id @default(uuid())
+  team          RelicsTeam      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId        String
+  player        Player          @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId      Int
+  relicsDamage  RelicsDamage[]
+
+  @@map("erp_relics_players_team")
+}
+
+// Modelo para Dano em Relics
+model RelicsDamage {
+  id            String           @id @default(uuid())
+  player        Player           @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId      Int
+  playerTeam    RelicsPlayerTeam @relation(fields: [playerTeamId], references: [id], onDelete: Cascade)
+  playerTeamId  String
+  session       String
+  boss          String
+  damage        String          @db.VarChar(50)
+
+  @@map("erp_relics_dmg")
+}
+
+// Modelo para Mensagens
+model Message {
+  id          Int       @id @default(autoincrement())
+  groupId     String    @db.VarChar(255)
+  userId      String    @db.VarChar(255)
+  timestamp   DateTime
+  content     String?
+  links       String[]
+  sentiment   String?   @db.VarChar(50)
+
+  @@map("mensagens")
+}
+
+// Modelo para Análise de Sentimentos
+model Sentiment {
+  word      String    @id
+  score     Int
+
+  @@map("sentimentos")
+}

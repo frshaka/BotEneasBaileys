@@ -1,0 +1,49 @@
+{
+  "compilerOptions": {
+    // Configurações do ECMAScript
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    
+    // Configurações de Compilação
+    "outDir": "./dist",
+    "rootDir": "./src",
+    
+    // Configurações Estritas do TypeScript
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    
+    // Configurações de Módulos
+    "moduleResolution": "node",
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    
+    // Configurações Adicionais
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    
+    // Configurações de Source Map
+    "sourceMap": true,
+    
+    // Configurações Experimentais
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ],
+  "ts-node": {
+    "files": true
+  }
+}
